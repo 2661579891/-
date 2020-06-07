@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <base th:href="${#request.getContextPath()}+'/'" >
+    <title>角色管理</title>
+    <!-- Bootstrap core CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/dashboard.css" rel="stylesheet">
+    <link href="css/bootstrap-treeview.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+    <style>
+        .list-group-horizontal .list-group-item {
+            display: inline-block;
+        }
+        .list-group-horizontal .list-group-item {
+            margin-bottom: 0;
+            margin-left:-4px;
+            margin-right: 0;
+        }
+        .list-group-horizontal .list-group-item:first-child {
+            border-top-right-radius:0;
+            border-bottom-left-radius:4px;
+        }
+        .list-group-horizontal .list-group-item:last-child {
+            border-top-right-radius:4px;
+            border-bottom-left-radius:0;
+        }
+    </style>
+</head>
+<body>
+<div class="container" style="width: auto">
+    <!--新建角色-->
+    <button type="button" id="add_role" class="btn btn-sm btn-info">新建</button>
+    <!--角色授权-->
+    <button type="button" id="grant" class="btn btn-sm btn-info">授权</button>
+    <!--更新角色-->
+    <button type="button" id="renew_role" class="btn btn-sm btn-info">更新</button>
+    <!--删除角色-->
+    <button type="button" id="del_role" class="btn btn-sm btn-info">删除</button>
+    <table class="table table-bordered table-responsive table-hover">
+        <thead>
+            <tr>
+                <th></th>
+                <th>角色编号</th>
+                <th>角色名称</th>
+                <th>角色描述</th>
+                <th>角色顺序</th>
+                <th>角色类型</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="role:${roles}" class="role-tr">
+                <td>
+                    <input type="checkbox" class="ck-role">
+                </td>
+                <td class="code" th:text="${role.roleId}">1</td>
+                <td class="roleName" th:text="${role.roleName}">1</td>
+                <td class="roleDesc" th:text="${role.roleDesc}">1</td>
+                <td class="roleOrder" th:text="${role.roleOrder}">1</td>
+                <td class="roleType" th:text="${role.roleType}">1</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body" id="role-treeview">
+            <!--角色拥有权限树形显示-->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--增加角色 Modal -->
+<div class="modal fade" id="add-role" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <h2>角色信息</h2>
+                <p id="check"></p>
+                <div class="row" style="padding-top:50px">
+                    <div class="text-center">
+                        <div class="list-group list-group-horizontal">
+                            角色编码：<input type="text" class="list-group-item" id="roleId" placeholder="角色编码">
+                            角色名称：<input type="text" class="list-group-item" id="roleName" placeholder="角色名称">
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="list-group list-group-horizontal">
+                            角色排序：<input type="text" class="list-group-item" id="roleOrder" placeholder="角色排序">
+                            角色类型：<input type="text" class="list-group-item" id="roleType" placeholder="角色类型">
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div class="list-group list-group-horizontal">
+                        角色描述：<input type="text" class="list-group-item" id="roleDesc" placeholder="角色描述" style="width:500px; height:100px">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" id="btnSave" data-dismiss="modal">保存</button>
+                <button type="button" class="btn btn-default" id="btnClose" data-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/bootstrap-treeview.js"></script>
+<script type="text/javascript" src="js/bootstrap.min.js"></script>
+<script type="text/javascript">
+    /*刷新页面操作*/
+    function refresh(){
+        location.reload();
+    }
+    /*定义新增以及更新的全局url变量*/
+    var url;
+
+    $(function () {
+        //给角色数据行添加点击事件
+        $(".role-tr").click(function () {
+            //去掉复选框的选中效果
+            $(".ck-role").prop("checked",false);
+            //给当前点击行复选框添加选中效果
+            $(this).find(".ck-role").prop("checked",true);
+        });
+        //弹出模态框
+        $("#grant").click(function () {
+            var checkedBox=$(":checkbox:checked");
+            if (checkedBox.length == 0)
+            {
+                alert("必须选择一个角色");
+                return;
+            }
+            //将角色名称作为参数查询权限
+            var roleName=checkedBox.parent().parent().find(".roleName").text();
+            var roleId=checkedBox.parent().parent().find(".code").text();
+            $.get("http://localhost:8080/module/getRoleTreeNodes?roleName="+roleName,function (resp) {
+                var tree=$("#role-treeview").treeview(
+                    {
+                        data:resp.data,
+                        showIcon:false,
+                        showCheckbox:true,
+                        levels:1,       //展开级数
+                        onNodeChecked:function (event, node) {
+                            if(node.parentId != undefined)
+                            {
+                                tree.treeview("checkNode",node.parentId);
+                            }
+                            //添加的如果是子权限则父级权限也要加上
+                            // $.post("http://localhost:8080/module/grantModuleToRole",
+                            //     {"moduleName":node.text,"roleId":roleId},
+                            //     function (resp) {
+                            //         // alert(resp.msg)
+                            //         //选中父级
+                            //     }
+                            // )
+                        },
+                        onNodeUnchecked:function (event, node) {
+                            if(node.nodes != undefined && node.nodes.length >0)
+                            {
+                                for(var i=0;i<node.nodes.length;i++)
+                                {
+                                    tree.treeview("uncheckNode",node.nodes[i].nodeId);
+                                }
+                            }
+                            //删除的如果是父权限则子级权限要全部删除
+                            // $.post("http://localhost:8080/module/removeModuleToRole",
+                            //     {"moduleName":node.text,"roleId":roleId},
+                            //     function (resp) {
+                            //         alert(resp.msg)
+                            //     }
+                            // )
+                        }
+                    }
+                );
+            });
+            $("#myModal").modal("show");
+        });
+
+        /*弹出新增模态框*/
+        $("#add_role").click(function(){
+            $("#roleId").val("");
+            $("#roleId").removeAttr("disabled");
+            $("#roleName").val("");
+            $("#roleDesc").val("");
+            $("#roleOrder").val("");
+            $("#roleType").val("");
+            url="http://localhost:8080/role/addRole";
+            $("#check").text("");
+            $("#add-role").modal("show");
+        });
+
+        /*弹出更新模态框*/
+        $("#renew_role").click(function () {
+            var checkedBox=$(":checkbox:checked");
+            if (checkedBox.length == 0)
+            {
+                alert("必须选择一个角色");
+                return;
+            }
+            var roleId=checkedBox.parent().parent().find(".code").text();
+            var roleName=checkedBox.parent().parent().find(".roleName").text();
+            var roleDesc=checkedBox.parent().parent().find(".roleDesc").text();
+            var roleOrder=checkedBox.parent().parent().find(".roleOrder").text();
+            var roleType=checkedBox.parent().parent().find(".roleType").text();
+            $("#roleId").val(roleId);
+            $("#roleId").attr("disabled",true);
+            $("#roleName").val(roleName);
+            $("#roleDesc").val(roleDesc);
+            $("#roleOrder").val(roleOrder);
+            $("#roleType").val(roleType);
+            url="http://localhost:8080/role/updateRole";
+            $("#check").text("");
+            $("#add-role").modal("show");
+        });
+
+        /*弹出删除模态框*/
+        $("#del_role").click(function () {
+            var checkedBox=$(":checkbox:checked");
+            if (checkedBox.length == 0)
+            {
+                alert("必须选择一个角色");
+                return;
+            }
+            var roleName=checkedBox.parent().parent().find(".roleName").text();
+            var roleId=checkedBox.parent().parent().find(".code").text();
+            if(confirm("是否确定删除"+roleName+"？")){
+                $.get("http://localhost:8080/role/deleteRole?roleId="+roleId,
+                function (resp) {
+                    alert(resp.msg);
+                });
+                $("#btnClose").click();
+                refresh();
+            }
+        });
+        /*检查roleId是否存在*/
+        $("#roleId").blur(function () {
+            var able=$("#roleId").attr("disabled");
+            if(able != "disabled"){
+                var id=$(this).parent().parent().find("#roleId").val();
+                $.get("http://localhost:8080/role/checkRoleId?roleId="+id,function (resp) {
+                    if(resp.msg == "true"){
+                        //alert("该角色编码可以使用");
+                        $("#check").text("该角色编码可以使用").css("color","green");
+                    }else{
+                        //alert("该角色编码已经存在");
+                        $("#check").text("该角色编码已经存在").css("color","red");
+                    }
+                });
+            }
+        });
+        /*保存角色*/
+        $("#btnSave").click(function () {
+            $.post(
+                url,
+                {
+                     roleId:$("#roleId").val(),
+                     roleName:$("#roleName").val(),
+                     roleDesc:$("#roleDesc").val(),
+                     roleOrder:$("#roleOrder").val(),
+                     roleType:$("#roleType").val()
+                },
+                function (resp) {
+                     console.log(resp.msg);
+                }
+            );
+            $("#btnClose").click();
+               refresh();
+        });
+
+        /*取消按钮*/
+        $("#btnClose").click(function () {
+            $("#add-role").modal("hide");
+        });
+    });
+</script>
+</body>
+</html>

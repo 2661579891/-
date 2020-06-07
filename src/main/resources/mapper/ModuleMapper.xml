@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--配置接口的映射,namespace命名空间设置为包名+接口名-->
+<mapper namespace="com.hopu.phone_admin.dao.IModuleMapper">
+    <!--        配置通过账户查询用户所有权限的结果映射-->
+    <resultMap id="moduleMap" type="TbModule">
+        <id property="moduleId" column="module_id"/>
+        <result property="moduleCode" column="module_code"/>
+        <result property="moduleName" column="module_name"/>
+        <result property="linkUrl" column="link_url"/>
+        <result property="moduleOrder" column="module_order"/>
+        <result property="parentModule" column="parent_module"/>
+        <result property="moduleDesc" column="module_desc"/>
+        <result property="expanded" column="expanded"/>
+        <result property="leaf" column="leaf"/>
+    </resultMap>
+    <!--        配置通过账户查询用户二级权限的tree view结果映射-->
+    <resultMap id="treeViewMap" type="ModuleTreeNode">
+        <result property="text" column="p_name"/>
+        <result property="href" column="p_url"/>
+<!--        <result property="checked" column="checked"/>-->
+        <collection
+                property="nodes"
+                javaType="java.util.List"
+                ofType="ModuleTreeNode">
+            <result property="text" column="c_name"/>
+            <result property="href" column="c_url"/>
+            <result property="checked" column="checked"/>
+        </collection>
+    </resultMap>
+
+
+    <select id="selectModuleByAccount" resultMap="moduleMap" parameterType="java.lang.String">
+        SELECT m.*
+        FROM tb_user u,tb_user_role ur,tb_role r,tb_role_module rm,tb_module m
+        WHERE u.user_id = ur.user_id
+        and r.role_id = ur.role_id
+        and r.role_id = rm.role_id
+        and rm.module_id = m.module_code
+        and u.user_login_account=#{account}
+    </select>
+
+    <select id="selectModuleTreeNodeByAccount" resultMap="treeViewMap" parameterType="java.lang.String">
+        select p.module_name p_name,p.link_url p_url,c.module_name c_name,c.link_url c_url
+        from tb_user u
+        JOIN tb_role r
+        join tb_role_module rm
+        join tb_module p
+        join tb_user_role ur
+        join tb_module c
+        on u.user_id=ur.user_id
+        and ur.role_id=r.role_id
+        and r.role_id=rm.role_id
+        and rm.module_id=c.module_code
+        and p.module_code=c.parent_module
+        and p.parent_module='0101'
+        and u.user_login_account=#{account}
+    </select>
+
+    <select id="selectModuleTreeNodeByRoleName" resultMap="treeViewMap" parameterType="java.lang.String">
+        SELECT DISTINCT p.module_name p_name,p.link_url p_url,c.module_name c_name,c.link_url c_url,
+        case
+            when
+                -- 判断角色拥有权限是否在全部权限中存在，有则设为true
+                EXISTS
+                (
+                    SELECT * FROM
+                    (
+                            SELECT c.module_name c_name1
+                            FROM tb_role r
+                            join tb_role_module rm
+                            join tb_module p
+                            join tb_module c
+                            on c.module_code=rm.module_id
+                            and r.role_id=rm.role_id
+                            and p.module_code=c.parent_module
+                            and p.parent_module='0101'
+                            and r.role_name=#{roleName}
+                    ) as role_module
+                    where role_module.c_name1 = c.module_name
+                )
+            then 'true'
+            else 'false'
+        end checked
+        FROM tb_role r
+        join tb_role_module rm
+        join tb_module p
+        join tb_module c
+        on p.module_code=rm.module_id
+        and r.role_id=rm.role_id
+        and p.module_code=c.parent_module
+        and p.parent_module='0101'
+    </select>
+
+</mapper>

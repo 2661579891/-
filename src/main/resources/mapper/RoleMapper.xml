@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--配置接口的映射,namespace命名空间设置为包名+接口名-->
+<mapper namespace="com.hopu.phone_admin.dao.IRoleMapper">
+    <resultMap id="roleMap" type="com.hopu.phone_admin.entity.TbRole">
+        <id property="roleId" column="role_id"/>
+        <result property="roleName" column="role_name"/>
+        <result property="roleDesc" column="role_desc"/>
+        <result property="roleOrder" column="role_order"/>
+        <result property="roleType" column="role_type"/>
+    </resultMap>
+
+    <select id="selectRolesByAccount" resultMap="roleMap" parameterType="java.lang.String">
+        SELECT r.* FROM tb_user u,tb_role r,tb_user_role ur
+        WHERE u.user_id = ur.user_id
+        and r.role_id = ur.role_id
+        and u.user_login_account=#{account}
+    </select>
+
+</mapper>
